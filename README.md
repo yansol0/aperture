@@ -18,9 +18,9 @@ go install github.com/yansol0/aperture
 ```bash
 # in repo root
 go mod tidy
-go build ./cmd
+go build
 # or run directly
-go run ./cmd -spec <openapi.(json|yaml)> -config config.yaml -base-url https://api.example.com -out aperture_log.jsonl -v
+go run . -spec <openapi.(json|yaml)> -config config.yaml -base-url https://api.example.com -out aperture_log.jsonl -v
 ```
 
 ### Usage
