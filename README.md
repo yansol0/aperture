@@ -11,7 +11,7 @@ Automates detection of low-hanging IDOR issues by generating cross-user access a
 ### Install / Build
 - Go install
 ```sh
-go install github.com/yansol0/aperture
+go install github.com/yansol0/aperture@latest
 ```
 
 - Build from source
