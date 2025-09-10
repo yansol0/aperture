@@ -44,7 +44,7 @@ func main() {
 	fs.IntVarP(&timeoutSec, "timeout", "t", 20, "HTTP request timeout in seconds")
 	fs.BoolVarP(&jsonl, "jsonl", "j", false, "Write JSON Lines output instead of text")
 	fs.BoolVarP(&listOnly, "list", "l", false, "List unique path parameter names from the provided spec and exit")
-	fs.BoolVar(&skipDelete, "skip-delete", false, "Skip DELETE requests during testing")
+	fs.BoolVar(&skipDelete, "skip-delete", false, "Skip DELETE requests during testing (default: false)")
 
 	// Custom usage/help
 	fs.Usage = func() {
@@ -67,17 +67,7 @@ func main() {
 		fmt.Fprintf(w, "\nExamples:\n  aperture -s openapi.json -c config.yml -b https://api.example.com -o out.jsonl -j -v --skip-delete\n  aperture --spec /path/to/openapi.json --list\n")
 	}
 
-	// Preprocess args to support -sd alias for --skip-delete
-	args := make([]string, 0, len(os.Args)-1)
-	for _, a := range os.Args[1:] {
-		if a == "-sd" {
-			args = append(args, "--skip-delete")
-			continue
-		}
-		args = append(args, a)
-	}
-
-	if err := fs.Parse(args); err != nil {
+	if err := fs.Parse(os.Args[1:]); err != nil {
 		if errors.Is(err, pflag.ErrHelp) {
 			os.Exit(0)
 		}
