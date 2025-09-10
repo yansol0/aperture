@@ -118,7 +118,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
-		m.prog.Width = max(20, m.width-10)
+		m.prog.Width = max(20, (m.width-10)/2)
 		return m, nil
 	case spinner.TickMsg:
 		var cmd tea.Cmd
@@ -139,7 +139,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case runner.EventTotalRequests:
 			m.total = e.Total
 			m.percent = percent(m.completed, m.total)
-			return m, m.prog.SetPercent(m.percent)
+			return m, tea.Batch(m.prog.SetPercent(m.percent), waitForEvent(m.init.Events))
 		case runner.EventEndpointStarting:
 			m.currentEndpoint = e.Endpoint
 			m.currentMethod = e.Method

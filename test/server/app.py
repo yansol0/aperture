@@ -69,6 +69,46 @@ def get_note(note_id: int):
 	return jsonify({"id": row[0], "owner": row[1], "title": row[2], "content": row[3]}), 200
 
 
+# Add a query-param based endpoint for IDOR testing
+# VULNERABLE: allows listing notes for any provided org_id (mapped to owner) without verifying it matches the auth user
+@app.get("/notes/by-org")
+def list_by_org_vuln():
+	user = get_auth_user()
+	if user is None:
+		return jsonify({"error": "unauthorized"}), 401
+	org_id = request.args.get("org_id")
+	if not org_id:
+		return jsonify({"error": "org_id_required"}), 400
+	conn = get_db_connection()
+	cur = conn.cursor()
+	# For simplicity in this test app, treat org_id as the same string as note.owner
+	cur.execute("SELECT id, owner, title, content FROM notes WHERE owner = ? ORDER BY id", (org_id,))
+	rows = cur.fetchall()
+	conn.close()
+	notes = [{"id": r[0], "owner": r[1], "title": r[2], "content": r[3]} for r in rows]
+	return jsonify(notes), 200
+
+
+# SECURE: only allow listing notes when org_id equals the authenticated user's identity
+@app.get("/notes/by-org/secure")
+def list_by_org_secure():
+	user = get_auth_user()
+	if user is None:
+		return jsonify({"error": "unauthorized"}), 401
+	org_id = request.args.get("org_id")
+	if not org_id:
+		return jsonify({"error": "org_id_required"}), 400
+	if org_id != user:
+		return jsonify({"error": "forbidden"}), 403
+	conn = get_db_connection()
+	cur = conn.cursor()
+	cur.execute("SELECT id, owner, title, content FROM notes WHERE owner = ? ORDER BY id", (org_id,))
+	rows = cur.fetchall()
+	conn.close()
+	notes = [{"id": r[0], "owner": r[1], "title": r[2], "content": r[3]} for r in rows]
+	return jsonify(notes), 200
+
+
 # SECURE: only allow listing notes for the same user as the API key
 @app.get("/users/<user_id>/notes")
 def list_user_notes(user_id: str):

@@ -8,6 +8,7 @@ users:
       user_id: alice
       note_id: "1"
       owner: alice
+      org_id: alice
   - name: bob
     auth:
       type: header
@@ -15,4 +16,5 @@ users:
     fields:
       user_id: bob
       note_id: "2"
-      owner: bob 
+      owner: bob
+      org_id: bob 
