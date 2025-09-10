@@ -199,13 +199,13 @@ func (m model) View() string {
 		paths,
 		"",
 		title,
+		m.prog.ViewAs(m.percent),
+		progressLine,
+		"",
 		current,
 		"",
 		bodyTitle,
 		body,
-		"",
-		m.prog.ViewAs(m.percent),
-		progressLine,
 	)
 }
 

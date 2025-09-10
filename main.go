@@ -27,6 +27,7 @@ func main() {
 		timeoutSec int
 		jsonl      bool
 		listOnly   bool
+		skipDelete bool
 	)
 
 	// Use a custom FlagSet to control help/error behavior
@@ -43,29 +44,40 @@ func main() {
 	fs.IntVarP(&timeoutSec, "timeout", "t", 20, "HTTP request timeout in seconds")
 	fs.BoolVarP(&jsonl, "jsonl", "j", false, "Write JSON Lines output instead of text")
 	fs.BoolVarP(&listOnly, "list", "l", false, "List unique path parameter names from the provided spec and exit")
+	fs.BoolVar(&skipDelete, "skip-delete", false, "Skip DELETE requests during testing")
 
 	// Custom usage/help
 	fs.Usage = func() {
 		w := os.Stderr
 		bannerString := `
-	 █████╗ ██████╗ ███████╗██████╗ ████████╗██╗   ██╗██████╗ ███████╗
-	██╔══██╗██╔══██╗██╔════╝██╔══██╗╚══██╔══╝██║   ██║██╔══██╗██╔════╝
-	███████║██████╔╝█████╗  ██████╔╝   ██║   ██║   ██║██████╔╝█████╗  
-	██╔══██║██╔═══╝ ██╔══╝  ██╔══██╗   ██║   ██║   ██║██╔══██╗██╔══╝  
-	██║  ██║██║     ███████╗██║  ██║   ██║   ╚██████╔╝██║  ██║███████╗
-	╚═╝  ╚═╝╚═╝     ╚══════╝╚═╝  ╚═╝   ╚═╝    ╚═════╝ ╚═╝  ╚═╝╚══════╝
-	`
+		 █████╗ ██████╗ ███████╗██████╗ ████████╗██╗   ██╗██████╗ ███████╗
+		██╔══██╗██╔══██╗██╔════╝██╔══██╗╚══██╔══╝██║   ██║██╔══██╗██╔════╝
+		███████║██████╔╝█████╗  ██████╔╝   ██║   ██║   ██║██████╔╝█████╗  
+		██╔══██║██╔═══╝ ██╔══╝  ██╔══██╗   ██║   ██║   ██║██╔══██╗██╔══╝  
+		██║  ██║██║     ███████╗██║  ██║   ██║   ╚██████╔╝██║  ██║███████╗
+		╚═╝  ╚═╝╚═╝     ╚══════╝╚═╝  ╚═╝   ╚═╝    ╚═════╝ ╚═╝  ╚═╝╚══════╝
+		`
 		fmt.Fprintln(w, bannerString)
 		fmt.Fprintf(w, "Aperture IDOR Tester\n\n")
-		fmt.Fprintf(w, "Usage:\n  aperture --spec <path-or-url> --config <config.yaml> [--base-url URL] [--out PATH] [--timeout SECONDS] [--jsonl] [--verbose] [--list]\n\n")
+		fmt.Fprintf(w, "Usage:\n  aperture --spec <path-or-url> --config <config.yaml> [--base-url URL] [--out PATH] [--timeout SECONDS] [--jsonl] [--verbose] [--list] [--skip-delete]\n\n")
 		fmt.Fprintf(w, "Options:\n")
 		fs.SetOutput(w)
 		fs.PrintDefaults()
 		fs.SetOutput(io.Discard)
-		fmt.Fprintf(w, "\nExamples:\n  aperture -s openapi.json -c config.yml -b https://api.example.com -o out.jsonl -j -v\n  aperture --spec /path/to/openapi.json --list\n")
+		fmt.Fprintf(w, "\nExamples:\n  aperture -s openapi.json -c config.yml -b https://api.example.com -o out.jsonl -j -v --skip-delete\n  aperture --spec /path/to/openapi.json --list\n")
 	}
 
-	if err := fs.Parse(os.Args[1:]); err != nil {
+	// Preprocess args to support -sd alias for --skip-delete
+	args := make([]string, 0, len(os.Args)-1)
+	for _, a := range os.Args[1:] {
+		if a == "-sd" {
+			args = append(args, "--skip-delete")
+			continue
+		}
+		args = append(args, a)
+	}
+
+	if err := fs.Parse(args); err != nil {
 		if errors.Is(err, pflag.ErrHelp) {
 			os.Exit(0)
 		}
@@ -131,6 +143,7 @@ func main() {
 		Verbose:     verbose,
 		HTTPTimeout: time.Duration(timeoutSec) * time.Second,
 		Events:      events,
+		SkipDelete:  skipDelete,
 	}
 
 	// Start TUI

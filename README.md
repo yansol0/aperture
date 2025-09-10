@@ -1,6 +1,7 @@
 ### Aperture IDOR Tester
 
 Automates detection of low-hanging IDOR issues by generating cross-user access attempts from an OpenAPI spec and a YAML config of users.
+The purpose of this tool is not to replace manual testing but to supplement it.
 
 ### Features
 - Parses OpenAPI spec to discover endpoints, params, and request bodies
@@ -25,9 +26,9 @@ go run . --spec <openapi.(json|yaml)> --config config.yaml --base-url https://ap
 
 ### Usage
 ```bash
-aperture --spec <path-or-url> --config config.yaml [--base-url https://api.example.com] [--out aperture_log.(txt|jsonl)] [--timeout 20] [--jsonl] [-v] [--list]
+aperture --spec <path-or-url> --config config.yaml [--base-url https://api.example.com] [--out aperture_log.(txt|jsonl)] [--timeout 20] [--jsonl] [-v] [--list] [--skip-delete]
 # short forms are also supported, e.g.:
-aperture -s <path-or-url> -c config.yaml -b https://api.example.com -o aperture_log.jsonl -t 20 -j -v -l
+aperture -s <path-or-url> -c config.yaml -b https://api.example.com -o aperture_log.jsonl -t 20 -j -v -l -sd
 ```
 - `-s, --spec`: OpenAPI 3 spec file path or URL (JSON or YAML)
 - `-c, --config`: YAML config with users and fields
@@ -37,6 +38,7 @@ aperture -s <path-or-url> -c config.yaml -b https://api.example.com -o aperture_
 - `-j, --jsonl`: Write JSON Lines output instead of text
 - `-v, --verbose`: Verbose
 - `-l, --list`: List unique path parameter names from the provided spec and exit
+- `--skip-delete`: Skip DELETE requests during testing
 - `-h, --help`: Show help
 
 #### List path parameters
@@ -98,6 +100,7 @@ Completed. N endpoints tested, M potential IDOR findings.
 - Focuses on direct object reference checks; does not fuzz or do complex mutations
 - Skips endpoints where required fields are missing from the config
 - Treats `application/json` request bodies with object schemas; copies matching fields from `fields`
+- Use `--skip-delete` (or `-sd`) when you don't want to execute DELETE operations during a run
 
 ## Test environment (dockerized vulnerable API)
 

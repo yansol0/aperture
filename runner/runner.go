@@ -24,6 +24,8 @@ type Runner struct {
 	Verbose     bool
 	HTTPTimeout time.Duration
 
+	SkipDelete bool
+
 	TestedEndpoints   int
 	CompletedRequests int
 	TotalRequests     int
@@ -133,6 +135,21 @@ func (r *Runner) Execute(ctx context.Context) ([]ResultLog, error) {
 				fmt.Printf("[*] Testing %s %s\n", method, path)
 			}
 			r.emitEvent(Event{Kind: EventEndpointStarting, Endpoint: path, Method: method})
+
+			// Skip DELETE requests when configured
+			if r.SkipDelete && strings.EqualFold(method, "DELETE") {
+				if r.Verbose {
+					fmt.Printf("[~] Skipping %s %s: delete requests are skipped\n", method, path)
+				}
+				results = append(results, ResultLog{
+					Endpoint:      path,
+					Method:        method,
+					Result:        ResultSkipped,
+					SkippedReason: "delete requests are skipped",
+					Notes:         resultNotes,
+				})
+				continue
+			}
 
 			// Skip endpoints that do not declare any security requirement per OpenAPI
 			if !operationRequiresAuth(r.Spec, op) {
@@ -918,7 +935,9 @@ func (r *Runner) EstimateTotalRequests() int {
 	for path, item := range r.Spec.Paths.Map() {
 		ops := operationsFor(item)
 		for method, op := range ops {
-			_ = method
+			if r.SkipDelete && strings.EqualFold(method, "DELETE") {
+				continue
+			}
 			if !operationRequiresAuth(r.Spec, op) {
 				continue
 			}
