@@ -151,23 +151,36 @@ func (r *Runner) Execute(ctx context.Context) ([]ResultLog, error) {
 
 			required := r.requiredParams(op, item)
 
-			// For each user, ensure they have required fields
+			// For each user, ensure they have required fields for acting as the object owner
 			eligible := r.eligibleUsers(required)
-			if len(eligible) < 2 {
+			if len(r.Config.Users) < 2 {
 				if r.Verbose {
-					fmt.Printf("[~] Skipping %s %s: need >=2 users with required fields\n", method, path)
+					fmt.Printf("[~] Skipping %s %s: need >=2 users in config\n", method, path)
 				}
 				results = append(results, ResultLog{
 					Endpoint:      path,
 					Method:        method,
 					Result:        ResultSkipped,
-					SkippedReason: "need >=2 users with required fields",
+					SkippedReason: "need >=2 users in config",
+					Notes:         resultNotes,
+				})
+				continue
+			}
+			if len(eligible) < 1 {
+				if r.Verbose {
+					fmt.Printf("[~] Skipping %s %s: need >=1 user with required endpoint fields (path/query) to act as object owner\n", method, path)
+				}
+				results = append(results, ResultLog{
+					Endpoint:      path,
+					Method:        method,
+					Result:        ResultSkipped,
+					SkippedReason: "need >=1 user with required endpoint fields (path/query)",
 					Notes:         resultNotes,
 				})
 				continue
 			}
 
-			pairs := userPairs(eligible)
+			pairs := userPairsForEligibleObjectUsers(eligible, r.Config.Users)
 			for _, pair := range pairs {
 				userA := pair[0]
 				userB := pair[1]
@@ -634,6 +647,22 @@ func userPairs(users []testconfig.User) [][2]testconfig.User {
 	return pairs
 }
 
+// userPairsForEligibleObjectUsers builds pairs where the first user is eligible to act
+// as the object owner for the endpoint, and the second user can be any other user
+// (attacker credentials) from the full config.
+func userPairsForEligibleObjectUsers(eligible []testconfig.User, all []testconfig.User) [][2]testconfig.User {
+	var pairs [][2]testconfig.User
+	for _, objectUser := range eligible {
+		for _, credUser := range all {
+			if credUser.Name == objectUser.Name {
+				continue
+			}
+			pairs = append(pairs, [2]testconfig.User{objectUser, credUser})
+		}
+	}
+	return pairs
+}
+
 // buildJSONBodyFromSchema constructs a JSON value that satisfies the provided schema.
 // It prioritizes values in fields for matching property names and synthesizes the rest as needed.
 func (r *Runner) buildJSONBodyFromSchema(schema *openapi3.SchemaRef, fields map[string]string) any {
@@ -895,17 +924,18 @@ func (r *Runner) EstimateTotalRequests() int {
 			}
 			required := r.requiredParams(op, item)
 			eligible := r.eligibleUsers(required)
-			if len(eligible) < 2 {
+			if len(r.Config.Users) < 2 || len(eligible) < 1 {
 				continue
 			}
-			pairs := userPairs(eligible)
-			for _, pair := range pairs {
-				userA := pair[0]
-				if !operationReferencesUserFields(path, op, item, userA) {
+			for _, objectUser := range eligible {
+				if !operationReferencesUserFields(path, op, item, objectUser) {
 					continue
 				}
-				// Two requests: control + test
-				total += 2
+				// For each eligible object user, pair with every other user as creds (control + test)
+				numCreds := len(r.Config.Users) - 1
+				if numCreds > 0 {
+					total += numCreds * 2
+				}
 			}
 		}
 	}
