@@ -1,0 +1,18 @@
+default_auth_header_name: X-API-Key
+users:
+  - name: alice
+    auth:
+      type: header
+      value: KEY_ALICE
+    fields:
+      user_id: alice
+      note_id: "1"
+      owner: alice
+  - name: bob
+    auth:
+      type: header
+      value: KEY_BOB
+    fields:
+      user_id: bob
+      note_id: "2"
+      owner: bob 
