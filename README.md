@@ -6,7 +6,7 @@ Automates detection of low-hanging IDOR issues by generating cross-user access a
 - Parses OpenAPI spec to discover endpoints, params, and request bodies
 - Builds control vs test requests across user pairs
 - Supports header or cookie auth per user
-- JSONL log with full request/response details + console summary
+- Text log by default; optional JSONL (-jsonl) with full request/response details + console summary
 
 ### Install / Build
 - Go install
@@ -20,19 +20,32 @@ go install github.com/yansol0/aperture@latest
 go mod tidy
 go build
 # or run directly
-go run . -spec <openapi.(json|yaml)> -config config.yaml -base-url https://api.example.com -out aperture_log.jsonl -v
+go run . -spec <openapi.(json|yaml)> -config config.yaml -base-url https://api.example.com -out aperture_log.jsonl -jsonl -v
 ```
 
 ### Usage
 ```bash
-aperture -spec <path-or-url> -config config.yaml [-base-url https://api.example.com] [-out aperture_log.jsonl] [-timeout 20] [-v]
+aperture -spec <path-or-url> -config config.yaml [-base-url https://api.example.com] [-out aperture_log.(txt|jsonl)] [-timeout 20] [-jsonl] [-v] [-list]
 ```
 - `-spec`: OpenAPI 3 spec file path or URL (JSON or YAML)
 - `-config`: YAML config with users and fields
 - `-base-url`: Overrides spec servers[0].URL
-- `-out`: JSON Lines log output (default `aperture_log.jsonl`)
+- `-out`: Output log file path (default `aperture_log.txt`). With `-jsonl`, writes JSON Lines to this path.
 - `-timeout`: HTTP timeout seconds (default 20)
+- `-jsonl`: Write JSON Lines output instead of text
 - `-v`: Verbose
+- `-list`: List unique path parameter names from the provided spec and exit
+
+#### List path parameters
+List all path parameters (de-duplicated), one per line:
+```bash
+aperture -spec /path/to/openapi.json -list
+```
+Example output for a route like `https://console.neon.tech/api/v2/projects/{project_id}/endpoints/{endpoint_id}`:
+```text
+endpoint_id
+project_id
+```
 
 ### Config (YAML)
 ```yaml
@@ -71,7 +84,7 @@ users:
   creds=user2, object=user1
 Completed. N endpoints tested, M potential IDOR findings.
 ```
-- JSONL log (`-out`): one line per test with request/response details and result label:
+- JSONL log (`-out` with `-jsonl`): one line per test with request/response details and result label:
 ```json
 {"endpoint":"/projects/{project_id}/users/{user_id}","method":"GET","control":{...},"test":{...},"result":"IDOR FOUND"}
 ```

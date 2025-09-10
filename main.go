@@ -24,6 +24,7 @@ func main() {
 		verbose    bool
 		timeoutSec int
 		jsonl      bool
+		listOnly   bool
 	)
 
 	flag.StringVar(&specPath, "spec", "", "Path or URL to OpenAPI spec (JSON or YAML)")
@@ -33,10 +34,11 @@ func main() {
 	flag.BoolVar(&verbose, "v", false, "Verbose logging")
 	flag.IntVar(&timeoutSec, "timeout", 20, "HTTP request timeout in seconds")
 	flag.BoolVar(&jsonl, "jsonl", false, "Write JSON Lines output instead of text")
+	flag.BoolVar(&listOnly, "list", false, "List unique path parameter names from the provided spec and exit")
 	flag.Parse()
 
-	if specPath == "" || configPath == "" {
-		log.Fatalf("missing required flags: -spec and -config")
+	if specPath == "" {
+		log.Fatalf("missing required flag: -spec")
 	}
 
 	ctx := context.Background()
@@ -47,6 +49,15 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to load OpenAPI spec: %v", err)
 	}
+
+	if listOnly {
+		params := openapiutil.ListPathParams(swagger)
+		for _, p := range params {
+			fmt.Println(p)
+		}
+		return
+	}
+
 	if baseURL == "" {
 		baseURL = inferredBaseURL
 	}

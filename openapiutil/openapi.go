@@ -3,6 +3,8 @@ package openapiutil
 import (
 	"context"
 	"net/url"
+	"regexp"
+	"sort"
 	"strings"
 
 	"github.com/getkin/kin-openapi/openapi3"
@@ -45,4 +47,57 @@ func firstServerURL(doc *openapi3.T) string {
 
 func isHTTPURL(s string) bool {
 	return strings.HasPrefix(s, "http://") || strings.HasPrefix(s, "https://")
+}
+
+// ListPathParams returns a sorted, de-duplicated list of all path parameter names
+// discovered in the document. It inspects both path templates (e.g., "/foo/{id}")
+// and declared parameters with in=="path" at the path and operation levels.
+func ListPathParams(doc *openapi3.T) []string {
+	seen := map[string]struct{}{}
+	add := func(name string) {
+		name = strings.TrimSpace(name)
+		if name == "" {
+			return
+		}
+		seen[name] = struct{}{}
+	}
+
+	// From path templates
+	re := regexp.MustCompile(`\{([^}]+)\}`)
+	for path, item := range doc.Paths.Map() {
+		_ = item // still inspect declared params below
+		matches := re.FindAllStringSubmatch(path, -1)
+		for _, m := range matches {
+			if len(m) >= 2 {
+				add(m[1])
+			}
+		}
+	}
+
+	// From declared parameters (path level and operation level)
+	for _, item := range doc.Paths.Map() {
+		for _, p := range item.Parameters {
+			if p != nil && p.Value != nil && p.Value.In == "path" {
+				add(p.Value.Name)
+			}
+		}
+		ops := []*openapi3.Operation{item.Get, item.Post, item.Put, item.Patch, item.Delete, item.Head, item.Options, item.Connect, item.Trace}
+		for _, op := range ops {
+			if op == nil {
+				continue
+			}
+			for _, p := range op.Parameters {
+				if p != nil && p.Value != nil && p.Value.In == "path" {
+					add(p.Value.Name)
+				}
+			}
+		}
+	}
+
+	out := make([]string, 0, len(seen))
+	for k := range seen {
+		out = append(out, k)
+	}
+	sort.Strings(out)
+	return out
 }
