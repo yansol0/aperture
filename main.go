@@ -2,12 +2,14 @@ package main
 
 import (
 	"context"
-	"flag"
+	"errors"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"time"
 
+	"github.com/spf13/pflag"
 	"github.com/yansol0/aperture/logging"
 	"github.com/yansol0/aperture/openapiutil"
 	"github.com/yansol0/aperture/runner"
@@ -27,18 +29,61 @@ func main() {
 		listOnly   bool
 	)
 
-	flag.StringVar(&specPath, "spec", "", "Path or URL to OpenAPI spec (JSON or YAML)")
-	flag.StringVar(&configPath, "config", "", "Path to YAML config file with users and fields")
-	flag.StringVar(&baseURL, "base-url", "", "Base URL to target API (overrides OpenAPI servers[0])")
-	flag.StringVar(&outPath, "out", "aperture_log.txt", "Output log file path")
-	flag.BoolVar(&verbose, "v", false, "Verbose logging")
-	flag.IntVar(&timeoutSec, "timeout", 20, "HTTP request timeout in seconds")
-	flag.BoolVar(&jsonl, "jsonl", false, "Write JSON Lines output instead of text")
-	flag.BoolVar(&listOnly, "list", false, "List unique path parameter names from the provided spec and exit")
-	flag.Parse()
+	// Use a custom FlagSet to control help/error behavior
+	fs := pflag.NewFlagSet("aperture", pflag.ContinueOnError)
+	fs.SortFlags = false
+	fs.SetOutput(io.Discard) // suppress pflag's own error/help lines; we print our own
 
+	// Define flags (short and long forms)
+	fs.StringVarP(&specPath, "spec", "s", "", "Path or URL to OpenAPI spec (JSON or YAML)")
+	fs.StringVarP(&configPath, "config", "c", "", "Path to YAML config file with users and fields")
+	fs.StringVarP(&baseURL, "base-url", "b", "", "Base URL to target API (overrides OpenAPI servers[0])")
+	fs.StringVarP(&outPath, "out", "o", "aperture_log.txt", "Output log file path")
+	fs.BoolVarP(&verbose, "verbose", "v", false, "Verbose logging")
+	fs.IntVarP(&timeoutSec, "timeout", "t", 20, "HTTP request timeout in seconds")
+	fs.BoolVarP(&jsonl, "jsonl", "j", false, "Write JSON Lines output instead of text")
+	fs.BoolVarP(&listOnly, "list", "l", false, "List unique path parameter names from the provided spec and exit")
+
+	// Custom usage/help
+	fs.Usage = func() {
+		w := os.Stderr
+		bannerString := `
+	 █████╗ ██████╗ ███████╗██████╗ ████████╗██╗   ██╗██████╗ ███████╗
+	██╔══██╗██╔══██╗██╔════╝██╔══██╗╚══██╔══╝██║   ██║██╔══██╗██╔════╝
+	███████║██████╔╝█████╗  ██████╔╝   ██║   ██║   ██║██████╔╝█████╗  
+	██╔══██║██╔═══╝ ██╔══╝  ██╔══██╗   ██║   ██║   ██║██╔══██╗██╔══╝  
+	██║  ██║██║     ███████╗██║  ██║   ██║   ╚██████╔╝██║  ██║███████╗
+	╚═╝  ╚═╝╚═╝     ╚══════╝╚═╝  ╚═╝   ╚═╝    ╚═════╝ ╚═╝  ╚═╝╚══════╝
+	`
+		fmt.Fprintln(w, bannerString)
+		fmt.Fprintf(w, "Aperture IDOR Tester\n\n")
+		fmt.Fprintf(w, "Usage:\n  aperture --spec <path-or-url> --config <config.yaml> [--base-url URL] [--out PATH] [--timeout SECONDS] [--jsonl] [--verbose] [--list]\n\n")
+		fmt.Fprintf(w, "Options:\n")
+		fs.SetOutput(w)
+		fs.PrintDefaults()
+		fs.SetOutput(io.Discard)
+		fmt.Fprintf(w, "\nExamples:\n  aperture -s openapi.json -c config.yml -b https://api.example.com -o out.jsonl -j -v\n  aperture --spec /path/to/openapi.json --list\n")
+	}
+
+	if err := fs.Parse(os.Args[1:]); err != nil {
+		if errors.Is(err, pflag.ErrHelp) {
+			os.Exit(0)
+		}
+		fmt.Fprintln(os.Stderr, err)
+		fs.Usage()
+		os.Exit(2)
+	}
+
+	// Validate required flags
 	if specPath == "" {
-		log.Fatalf("missing required flag: -spec")
+		fmt.Fprintln(os.Stderr, "missing required flag: --spec")
+		fs.Usage()
+		os.Exit(2)
+	}
+	if !listOnly && configPath == "" {
+		fmt.Fprintln(os.Stderr, "missing required flag: --config")
+		fs.Usage()
+		os.Exit(2)
 	}
 
 	ctx := context.Background()

@@ -36,7 +36,7 @@ done
 
 echo "[3/4] Running aperture scanner..."
 rm -f "$OUT_FILE"
-GO111MODULE=on go run "$ROOT_DIR/main.go" -spec "$SPEC_FILE" -config "$CONFIG_FILE" -base-url "http://localhost:8080" -out "$OUT_FILE" -v
+GO111MODULE=on go run "$ROOT_DIR/main.go" --spec "$SPEC_FILE" --config "$CONFIG_FILE" --base-url "http://localhost:8080" --out "$OUT_FILE" -v
 
 # Summarize results without external deps
 echo "[3.5/4] Summarizing results..."

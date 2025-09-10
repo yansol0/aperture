@@ -20,26 +20,31 @@ go install github.com/yansol0/aperture@latest
 go mod tidy
 go build
 # or run directly
-go run . -spec <openapi.(json|yaml)> -config config.yaml -base-url https://api.example.com -out aperture_log.jsonl -jsonl -v
+go run . --spec <openapi.(json|yaml)> --config config.yaml --base-url https://api.example.com --out aperture_log.jsonl --jsonl -v
 ```
 
 ### Usage
 ```bash
-aperture -spec <path-or-url> -config config.yaml [-base-url https://api.example.com] [-out aperture_log.(txt|jsonl)] [-timeout 20] [-jsonl] [-v] [-list]
+aperture --spec <path-or-url> --config config.yaml [--base-url https://api.example.com] [--out aperture_log.(txt|jsonl)] [--timeout 20] [--jsonl] [-v] [--list]
+# short forms are also supported, e.g.:
+aperture -s <path-or-url> -c config.yaml -b https://api.example.com -o aperture_log.jsonl -t 20 -j -v -l
 ```
-- `-spec`: OpenAPI 3 spec file path or URL (JSON or YAML)
-- `-config`: YAML config with users and fields
-- `-base-url`: Overrides spec servers[0].URL
-- `-out`: Output log file path (default `aperture_log.txt`). With `-jsonl`, writes JSON Lines to this path.
-- `-timeout`: HTTP timeout seconds (default 20)
-- `-jsonl`: Write JSON Lines output instead of text
-- `-v`: Verbose
-- `-list`: List unique path parameter names from the provided spec and exit
+- `-s, --spec`: OpenAPI 3 spec file path or URL (JSON or YAML)
+- `-c, --config`: YAML config with users and fields
+- `-b, --base-url`: Overrides spec servers[0].URL
+- `-o, --out`: Output log file path (default `aperture_log.txt`). With `-j, --jsonl`, writes JSON Lines to this path.
+- `-t, --timeout`: HTTP timeout seconds (default 20)
+- `-j, --jsonl`: Write JSON Lines output instead of text
+- `-v, --verbose`: Verbose
+- `-l, --list`: List unique path parameter names from the provided spec and exit
+- `-h, --help`: Show help
 
 #### List path parameters
 List all path parameters (de-duplicated), one per line:
 ```bash
-aperture -spec /path/to/openapi.json -list
+aperture --spec /path/to/openapi.json --list
+# or
+aperture -s /path/to/openapi.json -l
 ```
 Example output for a route like `https://console.neon.tech/api/v2/projects/{project_id}/endpoints/{endpoint_id}`:
 ```text

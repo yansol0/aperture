@@ -7,6 +7,7 @@ require (
 	github.com/charmbracelet/bubbletea v0.25.0
 	github.com/charmbracelet/lipgloss v0.10.0
 	github.com/getkin/kin-openapi v0.124.0
+	github.com/spf13/pflag v1.0.5
 	gopkg.in/yaml.v3 v3.0.1
 )
 
